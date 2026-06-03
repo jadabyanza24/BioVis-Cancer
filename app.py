@@ -4,6 +4,15 @@ import numpy as np
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
+import gdown
+
+if not os.path.exists("scaler_luad.pkl"):
+    gdown.download(
+        "https://drive.google.com/uc?id=FILE_ID",
+        "scaler_luad.pkl",
+        quiet=False
+    )
 
 # ==========================================
 # 1. KONFIGURASI HALAMAN (Tampilan UI)
