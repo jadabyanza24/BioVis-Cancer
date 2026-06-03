@@ -9,7 +9,7 @@ import gdown
 
 if not os.path.exists("scaler_luad.pkl"):
     gdown.download(
-        "https://drive.google.com/uc?id=FILE_ID",
+        "https://drive.google.com/uc?id=1tUwrTCoQC6pbuWCM_tjBcFwSzNxEKDD6",
         "scaler_luad.pkl",
         quiet=False
     )
