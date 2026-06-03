@@ -7,12 +7,14 @@ import seaborn as sns
 import os
 import gdown
 
+# --- DOWNLOAD MODEL DARI GDRIVE ---
 if not os.path.exists("scaler_luad.pkl"):
     gdown.download(
         "https://drive.google.com/uc?id=1tUwrTCoQC6pbuWCM_tjBcFwSzNxEKDD6",
         "scaler_luad.pkl",
         quiet=False
     )
+# (Tambahkan block gdown untuk 3 file .pkl lainnya di sini jika belum terdownload otomatis)
 
 # ==========================================
 # 1. KONFIGURASI HALAMAN (Tampilan UI)
@@ -73,13 +75,60 @@ kanker paru-paru jenis *Lung Adenocarcinoma*. Silakan unggah file sekuensing pas
 """)
 
 st.subheader("Input Data Pasien")
-uploaded_file = st.file_uploader("Unggah file ekspresi gen (Format GDC STAR Counts .tsv):", type=['tsv', 'txt'])
 
-if uploaded_file is not None:
+# --- FITUR BARU: PILIHAN SUMBER DATA ---
+sumber_data = st.radio(
+    "Pilih metode input data rekam medis:",
+    ["Gunakan Data Demo (Contoh)", "Unggah File Baru (.tsv)"],
+    horizontal=True
+)
+
+df_temp = None # Variabel untuk menyimpan tabel sebelum diproses
+
+if sumber_data == "Unggah File Baru (.tsv)":
+    uploaded_file = st.file_uploader("Unggah file ekspresi gen (Format GDC STAR Counts .tsv):", type=['tsv', 'txt'])
+    if uploaded_file is not None:
+        df_temp = pd.read_csv(uploaded_file, sep='\t')
+
+else:
+    # Opsi Data Dummy
+    pilihan_demo = st.selectbox(
+        "Pilih profil pasien dari database kami untuk didemonstrasikan:",
+        [
+            "Pasien A (Target: Stadium I)",
+            "Pasien B (Target: Stadium II)",
+            "Pasien C (Target: Stadium III)",
+            "Pasien D (Target: Stadium IV - Kasus 1)",
+            "Pasien E (Target: Stadium IV - Kasus 2)",
+            "Pasien F (Target: Stadium IV - Kasus 3)"
+        ]
+    )
+    
+    # Mapping pilihan ke path file di folder DataDummy/
+    file_map = {
+        "Pasien A (Target: Stadium I)": "DataDummy/pasien_Stadium_I_test.tsv",
+        "Pasien B (Target: Stadium II)": "DataDummy/pasien_Stadium_II_test.tsv",
+        "Pasien C (Target: Stadium III)": "DataDummy/pasien_Stadium_III_test.tsv",
+        "Pasien D (Target: Stadium IV - Kasus 1)": "DataDummy/pasien_Stadium_IV_test.tsv",
+        "Pasien E (Target: Stadium IV - Kasus 2)": "DataDummy/pasien_Stadium_IV_varian_2.tsv",
+        "Pasien F (Target: Stadium IV - Kasus 3)": "DataDummy/pasien_Stadium_IV_varian_3.tsv"
+    }
+    
+    if st.button("🔬 Analisis Pasien Demo Ini", type="primary"):
+        path_file = file_map[pilihan_demo]
+        if os.path.exists(path_file):
+            df_temp = pd.read_csv(path_file, sep='\t')
+        else:
+            st.error(f"❌ File tidak ditemukan di path: {path_file}. Pastikan folder 'DataDummy' sudah di-push ke GitHub.")
+
+# ==========================================
+# 5. MESIN PEMROSESAN & PREDIKSI
+# ==========================================
+# Blok ini hanya berjalan jika df_temp sudah terisi (baik dari upload maupun dari demo)
+if df_temp is not None:
     with st.spinner('Mengekstrak 150 biomarker esensial dan menjalankan analisis XGBoost...'):
         try:
             # --- FASE A: PREPROCESSING DATA INPUT ---
-            df_temp = pd.read_csv(uploaded_file, sep='\t')
             df_temp = df_temp[df_temp['gene_id'].str.startswith('ENSG', na=False)]
             df_temp.set_index('gene_id', inplace=True)
             
