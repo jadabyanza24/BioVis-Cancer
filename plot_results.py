@@ -30,13 +30,13 @@ def distribution(counts, path, *, historical):
     fig.patch.set_facecolor('white')
     bars = ax.bar(LABELS, counts, color=PINK, width=0.62)
     ax.bar_label(bars, padding=5, fontsize=11, color=DARK)
-    ax.set_title('Distribusi stadium — ' + ('eksperimen historis' if historical else 'kohort evaluasi ulang'), loc='left', fontsize=15, weight='bold', color=DARK, pad=16)
-    ax.set_xlabel('Stadium tercatat')
-    ax.set_ylabel('Jumlah ' + ('file RNA-seq' if historical else 'kasus unik'))
+    ax.set_title('Stage distribution: ' + ('historical experiment' if historical else 'revised cohort'), loc='left', fontsize=15, weight='bold', color=DARK, pad=16)
+    ax.set_xlabel('Recorded stage')
+    ax.set_ylabel('Number of ' + ('RNA-seq files' if historical else 'unique cases'))
     ax.set_ylim(0, max(counts) * 1.2)
     ax.spines[['top', 'right']].set_visible(False)
-    note = ('Sumber: grafik tersimpan di notebook historis; jumlah pasien unik belum diverifikasi.' if historical else
-            'Satu file tumor primer dipilih per kasus; pemilihan dan label perlu diaudit lebih lanjut.')
+    note = ('Source: saved historical notebook chart; number of unique patients is unverified.' if historical else
+            'One primary tumor file per case; selection and labels require further audit.')
     fig.text(0.08, -0.08, note, color='#594B52', fontsize=9, wrap=True)
     _save(fig, path)
 
@@ -49,11 +49,11 @@ def confusion(matrix, path, *, historical):
         ax.text(j, i, str(count), ha='center', va='center', fontsize=12,
                 color='white' if count > matrix.max() * .55 else DARK, weight='bold')
     ax.set(xticks=range(4), yticks=range(4), xticklabels=LABELS, yticklabels=LABELS,
-           xlabel='Prediksi model', ylabel='Stadium tercatat')
-    ax.set_title('Confusion matrix — ' + ('eksperimen historis' if historical else 'evaluasi ulang'), loc='left', fontsize=15, weight='bold', color=DARK, pad=16)
-    fig.colorbar(im, ax=ax, label='Jumlah sampel', fraction=.046, pad=.04)
-    note = ('Evaluasi historis mengalami data leakage; bukan estimasi kinerja yang andal.' if historical else
-            'Evaluasi eksploratif; parameter dipengaruhi eksperimen lama. Bukan validasi klinis.')
+           xlabel='Predicted stage', ylabel='Recorded stage')
+    ax.set_title('Confusion matrix: ' + ('historical experiment' if historical else 'revised evaluation'), loc='left', fontsize=15, weight='bold', color=DARK, pad=16)
+    fig.colorbar(im, ax=ax, label='Number of cases', fraction=.046, pad=.04)
+    note = ('Historical evaluation has data leakage and is not a reliable performance estimate.' if historical else
+            'Exploratory evaluation; parameters were informed by earlier work. Not clinical validation.')
     fig.text(0.08, -0.06, note, color='#594B52', fontsize=9, wrap=True)
     _save(fig, path)
 
@@ -74,11 +74,11 @@ def global_importance(model_path, path):
     top = np.argsort(weights)[-10:]
     fig, ax = plt.subplots(figsize=(8, 5.5), layout='constrained')
     ax.barh(genes[top], weights[top], color=PINK)
-    ax.set_title('Feature importance global — 10 gen teratas', loc='left', fontsize=15, weight='bold', color=DARK, pad=16)
-    ax.set_xlabel('Feature importance model')
-    ax.set_ylabel('ID gen')
+    ax.set_title('Global feature importance: top 10 genes', loc='left', fontsize=15, weight='bold', color=DARK, pad=16)
+    ax.set_xlabel('Model feature importance')
+    ax.set_ylabel('Gene ID')
     ax.spines[['top', 'right']].set_visible(False)
-    fig.text(0.08, -0.06, 'Importance global model, bukan penjelasan pasien atau bukti sebab-akibat.', color='#594B52', fontsize=9)
+    fig.text(0.08, -0.06, 'Global model importance, not a patient-specific explanation or evidence of causation.', color='#594B52', fontsize=9)
     _save(fig, path)
 
 

@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="./assets/biovis-logo.png" alt="BioVis-Cancer logo" width="110">
+<img src="./assets/biovis-logo.png" alt="LumaGene logo" width="110">
 
-# BioVis-Cancer
+# LumaGene
 
 ### Exploring LUAD stage classification from gene expression
 
@@ -16,21 +16,25 @@ An academic team prototype for examining a machine learning workflow and its lim
 
 ## Overview
 
-BioVis-Cancer combines a Streamlit interface with an exploratory model that classifies recorded lung adenocarcinoma (LUAD) stages from gene-expression profiles. The project connects GDC data acquisition, feature selection, model evaluation, inference, and visualization in a reproducible research workflow.
+LumaGene, developed as the BioVis-Cancer team project, combines a Streamlit interface with an exploratory model that classifies recorded lung adenocarcinoma (LUAD) stages from gene-expression profiles. The project connects GDC data acquisition, feature selection, model evaluation, inference, and visualization in a reproducible research workflow.
 
 The model's performance is limited, particularly for the smallest stage class. Its outputs must not be used for medical decisions.
 
 ## Application preview
 
-![BioVis-Cancer application showing the research-use warning and sample input controls](./figures/app-preview.png)
+![LumaGene application with sample input and an empty results panel](./figures/app-preview.png)
 
-The interface is in Indonesian. The screenshot shows the local application and does not imply that a public deployment is available.
+The initial view places sample selection alongside an empty results panel.
+
+![LumaGene output showing class scores and global feature importance](./figures/app-output.png)
+
+The output view uses a repository example. Its scores are model outputs, not clinical probabilities or evidence of accuracy. These screenshots show the local application and do not imply that a public deployment is available.
 
 ## Key features
 
-- Explore a repository example or upload a non-sensitive TSV containing `gene_id` and `fpkm_unstranded` columns.
+- Explore a repository example or upload a non-sensitive TSV containing `gene_id` and `fpkm_unstranded` columns in a two-column workspace.
 - Validate numeric values and align gene identifiers to the model's expected features. Missing required genes and duplicate IDs are rejected.
-- View a predicted class and four model scores, with the limitations of those scores stated in the interface.
+- View a predicted class and four model scores in the results panel. Results remain visible across reruns and clear when the selected source changes.
 - Inspect the model's top 10 global feature importances. They are not patient-specific explanations, evidence of causation, or clinically validated biomarkers.
 - Run the application with the bundled research model, or generate a new model and evaluation locally.
 
@@ -90,11 +94,10 @@ The model correctly classified 56 of 101 held-out cases. Its accuracy was close 
 
 | Area | Tools |
 | --- | --- |
-| Interface | Streamlit, Matplotlib |
+| Interface | Streamlit, Matplotlib, custom CSS |
 | Data acquisition and preparation | GDC API, requests, pandas, NumPy |
 | Modeling | scikit-learn, imbalanced-learn, XGBoost |
 | Artifacts and notebooks | joblib, Jupyter notebook format, nbclient |
-| Testing | Python `unittest`, Streamlit `AppTest` |
 
 ## Repository structure
 
@@ -110,11 +113,10 @@ BioVis-Cancer/
 ├── assets/                        # Application logo
 ├── DataDummy/                     # Existing example expression files
 ├── figures/                       # Application preview and research figures
-├── notebooks/                     # Revised and historical experiments
-└── test_*.py                      # Validation and application tests
+└── notebooks/                     # Revised and historical experiments
 ```
 
-The repository also retains original serialized model and selector files from the team project. The current interface uses the bundled revised pipeline or a matching pipeline generated locally.
+The interface uses the bundled revised pipeline or a matching pipeline generated locally.
 
 ## Run locally
 
@@ -162,15 +164,9 @@ python -c "from plot_results import revised_figures; revised_figures()"
 
 The [revised notebook](./notebooks/revised_evaluation.ipynb) contains the workflow, saved output, and cells for creating the figures. The historical notebook is an archive; executing its original cells can overwrite model files or export patient-derived expression data.
 
-## Testing and validation
+## Validation
 
-Run the repository's unit and application tests:
-
-```bash
-python -m unittest -v test_download_gdc test_preprocessing test_evaluate test_plot_results test_app
-```
-
-The tests cover stage-label parsing, input and cohort validation, constant-feature handling, historical figure consistency, and the bundled-model application flow. The bundled model was also checked against the recorded held-out confusion matrix using the local evaluation data. These checks do not establish clinical safety or external validity.
+The bundled model was checked against the recorded held-out confusion matrix using the local evaluation data. The application was also exercised with a repository example. These checks do not establish clinical safety or external validity. No automated test suite is included in this version.
 
 ## Limitations
 
