@@ -1,225 +1,103 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
+import hashlib
+import json
 import joblib
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import seaborn as sns
-import os
-import gdown
+import pandas as pd
+import streamlit as st
 
-# --- DOWNLOAD MODEL DARI GDRIVE ---
-if not os.path.exists("scaler_luad.pkl"):
-    gdown.download(
-        "https://drive.google.com/uc?id=1tUwrTCoQC6pbuWCM_tjBcFwSzNxEKDD6",
-        "scaler_luad.pkl",
-        quiet=False
-    )
-# (Opsional: Tambahkan blok gdown di sini untuk 3 file .pkl lainnya jika ditaruh di GDrive juga)
+from preprocessing import ROOT, prepare_expression
 
-# ==========================================
-# 1. KONFIGURASI HALAMAN (Tampilan UI)
-# ==========================================
-st.set_page_config(
-    page_title="BioVis-Cancer | LUAD Staging",
-    page_icon="🫁",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# Kustomisasi warna visualisasi
-sns.set_theme(style="whitegrid")
-warna_stadium = ['#9b59b6', '#3498db', '#2ecc71', '#e74c3c'] # Ungu, Biru, Hijau, Merah
-
-# ==========================================
-# 2. MEMUAT KOMPONEN MODEL (Menggunakan Cache)
-# ==========================================
-@st.cache_resource
-def load_pipeline():
-    try:
-        scaler = joblib.load('scaler_luad.pkl')
-        selector_anova = joblib.load('selector_anova_luad.pkl')
-        selector_rfe = joblib.load('selector_rfe_luad.pkl')
-        model = joblib.load('model_stadium_luad.pkl')
-        return scaler, selector_anova, selector_rfe, model
-    except Exception as e:
-        st.error(f"⚠️ Gagal memuat file .pkl! Pastikan 4 file .pkl berada di folder yang sama dengan app.py. Error: {e}")
-        st.stop()
-
-scaler, selector_anova, selector_rfe, model = load_pipeline()
-stage_names = ["Stadium I", "Stadium II", "Stadium III", "Stadium IV"]
-
-# ==========================================
-# 3. SIDEBAR (Informasi Aplikasi)
-# ==========================================
+st.set_page_config(page_title='BioVis-Cancer | Research Prototype', page_icon=str(ROOT / 'assets' / 'biovis-logo.png'), layout='wide')
+logo_column, title_column = st.columns([1, 8], vertical_alignment='center')
+with logo_column:
+    st.image(str(ROOT / 'assets' / 'biovis-logo.png'), width=88)
+with title_column:
+    st.title('BioVis-Cancer')
+st.subheader('Eksplorasi ekspresi gen dan stadium LUAD')
+st.caption('Proyek akademik tim · TCGA-LUAD · RNA sequencing')
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/10619/10619850.png", width=100) # Ikon Paru-paru
-    st.title("BioVis-Cancer")
-    st.markdown("### Clinical Decision Support System")
-    st.divider()
-    st.markdown("""
-    **Arsitektur Model:**
-    * **Data:** RNA-Seq TCGA-LUAD
-    * **Feature Selection:** ANOVA + RFE (150 Biomarker)
-    * **Algoritma:** XGBoost (Optimized)
-    """)
-    st.divider()
-    st.caption("Dikembangkan untuk analisis bioinformatika dan presisi medis.")
+    st.header('Tentang proyek')
+    st.write('BioVis-Cancer mengeksplorasi klasifikasi stadium menggunakan data ekspresi gen dan menampilkan fitur penting model.')
+    st.markdown('**Alur model**')
+    st.write('Transformasi log, scaling, penyaringan gen konstan, seleksi ANOVA dan RFE, lalu XGBoost.')
+    st.markdown('**Batasan**')
+    st.write('Hasil belum divalidasi secara klinis dan tidak boleh digunakan untuk keputusan kesehatan.')
+st.warning('Prototipe akademik untuk eksplorasi, bukan alat diagnosis atau panduan terapi. Validasi klinis dan kinerja pada data independen belum dibuktikan. Jangan unggah data pasien atau data sensitif.')
+st.write('Pilih sampel untuk melihat keluaran model dan gambaran feature importance global. Hasil ini bersifat eksploratif.')
+st.divider()
 
-# ==========================================
-# 4. HALAMAN UTAMA (Main Dashboard)
-# ==========================================
-st.title("🫁 Sistem Klasifikasi Stadium Kanker Paru-Paru (LUAD)")
-st.markdown("""
-Aplikasi ini memproses data rekam medis genomik (RNA-Sequencing) untuk mendeteksi tingkat keparahan (stadium) 
-kanker paru-paru jenis *Lung Adenocarcinoma*. Silakan unggah file sekuensing pasien untuk memulai diagnosis.
-""")
+OUTPUT_MODEL = ROOT / 'outputs' / 'research_pipeline.joblib'
+BUNDLED_MODEL = ROOT / 'artifacts' / 'research_pipeline.joblib'
+MODEL_PATH = OUTPUT_MODEL if OUTPUT_MODEL.is_file() and OUTPUT_MODEL.with_name('evaluation.json').is_file() else BUNDLED_MODEL
 
-st.subheader("📥 Input Data Pasien")
+@st.cache_resource
+def load_pipeline(model_sha256):
+    # The checksum matches the report but does not establish trust in a pickle.
+    # Only load artifacts generated locally or obtained from a trusted source.
+    return joblib.load(MODEL_PATH)
 
-# --- FITUR SUMBER DATA ---
-sumber_data = st.radio(
-    "Pilih metode input data rekam medis:",
-    ["Gunakan Data Demo (Contoh)", "Unggah File Baru (.tsv)"],
-    horizontal=True
-)
+REPORT_PATH = MODEL_PATH.with_name('evaluation.json')
+if not MODEL_PATH.is_file() or not REPORT_PATH.is_file():
+    st.info('Model evaluasi ulang belum tersedia. Jalankan download_gdc.py dan evaluate.py di lingkungan lokal untuk membuatnya.')
+    st.stop()
+try:
+    report = json.loads(REPORT_PATH.read_text(encoding='utf-8'))
+    model_sha256 = hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest()
+    if model_sha256 != report.get('model_sha256'):
+        raise ValueError('Model dan laporan evaluasi tidak cocok; buat ulang keduanya.')
+    pipeline = load_pipeline(model_sha256)
+    if 'variance' not in pipeline.named_steps or not pipeline.named_steps['model'].feature_importances_.any():
+        raise ValueError('Model gagal pemeriksaan variasi fitur; jalankan evaluasi ulang.')
+except Exception as exc:
+    st.error(f'Gagal memuat model. Periksa versi dependensi dan asal artefak: {exc}')
+    st.stop()
 
-df_temp = None # Variabel untuk menyimpan tabel sebelum diproses
-
-if sumber_data == "Unggah File Baru (.tsv)":
-    uploaded_file = st.file_uploader("Unggah file ekspresi gen (Format GDC STAR Counts .tsv):", type=['tsv', 'txt'])
-    if uploaded_file is not None:
-        df_temp = pd.read_csv(uploaded_file, sep='\t')
-
-else:
-    # Opsi Data Dummy
-    pilihan_demo = st.selectbox(
-        "Pilih profil pasien dari database kami untuk didemonstrasikan:",
-        [
-            "Pasien A (Target: Stadium I)",
-            "Pasien B (Target: Stadium II)",
-            "Pasien C (Target: Stadium III)",
-            "Pasien D (Target: Stadium IV - Kasus 1)",
-            "Pasien E (Target: Stadium IV - Kasus 2)",
-            "Pasien F (Target: Stadium IV - Kasus 3)"
-        ]
+stage_iv = report.get('test_report', {}).get('3', {})
+if stage_iv.get('support', 0) > 0:
+    st.info(
+        f"Dalam evaluasi eksploratif yang tersimpan, recall stadium IV adalah "
+        f"{stage_iv['recall']:.0%} pada {int(stage_iv['support'])} kasus uji. "
+        'Jumlah kasus kecil; hasil tidak membuktikan kemampuan klinis atau generalisasi.'
     )
-    
-    # Mapping pilihan ke path file di folder DataDummy/
-    file_map = {
-        "Pasien A (Target: Stadium I)": "DataDummy/pasien_Stadium_I_test.tsv",
-        "Pasien B (Target: Stadium II)": "DataDummy/pasien_Stadium_II_test.tsv",
-        "Pasien C (Target: Stadium III)": "DataDummy/pasien_Stadium_III_test.tsv",
-        "Pasien D (Target: Stadium IV - Kasus 1)": "DataDummy/pasien_Stadium_IV_test.tsv",
-        "Pasien E (Target: Stadium IV - Kasus 2)": "DataDummy/pasien_Stadium_IV_varian_2.tsv",
-        "Pasien F (Target: Stadium IV - Kasus 3)": "DataDummy/pasien_Stadium_IV_varian_3.tsv"
-    }
-    
-    if st.button("🔬 Analisis Pasien Demo Ini", type="primary"):
-        path_file = file_map[pilihan_demo]
-        if os.path.exists(path_file):
-            df_temp = pd.read_csv(path_file, sep='\t')
-        else:
-            st.error(f"❌ File tidak ditemukan di path: {path_file}. Pastikan folder 'DataDummy' tersedia.")
 
-# ==========================================
-# 5. MESIN PEMROSESAN & PREDIKSI
-# ==========================================
-if df_temp is not None:
-    with st.spinner('Mengekstrak 150 biomarker esensial dan menjalankan analisis XGBoost...'):
-        try:
-            # --- FASE A: PREPROCESSING DATA INPUT ---
-            df_temp = df_temp[df_temp['gene_id'].str.startswith('ENSG', na=False)]
-            df_temp.set_index('gene_id', inplace=True)
-            
-            # Ambil kolom fpkm_unstranded dan jadikan 1 baris
-            patient_data = df_temp['fpkm_unstranded'].to_frame().T
-            
-            # --- FASE B: ALIGNMENT & FILTERING (2-LAPIS) ---
-            training_genes = scaler.feature_names_in_ 
-            patient_data = patient_data.reindex(columns=training_genes, fill_value=0.0)
-            
-            patient_log = np.log1p(patient_data)
-            patient_scaled = scaler.transform(patient_log)
-            
-            patient_anova = selector_anova.transform(patient_scaled)
-            patient_selected = selector_rfe.transform(patient_anova)
-            
-            # --- FASE C: PREDIKSI AI ---
-            prediction = model.predict(patient_selected)[0]
-            probabilities = model.predict_proba(patient_selected)[0]
-            predicted_stage = stage_names[prediction]
-            
-            # --- FASE D: MENAMPILKAN HASIL DIAGNOSIS ---
-            st.divider()
-            st.subheader("🔬 Hasil Analisis Komputasional")
-            
-            col1, col2 = st.columns([1.2, 2])
-            
-            with col1:
-                st.markdown("### Kesimpulan Diagnosis")
-                st.metric(label="Prediksi Kanker Pasien", value=predicted_stage)
-                
-                if prediction == 0:
-                    st.success("**Kondisi:** Terditeksi pada fase awal (Stadium I).\n\n**Rekomendasi:** Intervensi bedah (reseksi) sangat disarankan. Peluang keberhasilan terapi tinggi.")
-                elif prediction in [1, 2]:
-                    st.warning(f"**Kondisi:** Terdeteksi pada fase penyebaran lokal ({predicted_stage}).\n\n**Rekomendasi:** Diperlukan observasi klinis ketat dan evaluasi untuk kemoterapi ajuvan.")
-                else:
-                    st.error("**Kondisi:** Terdeteksi pada fase metastasis lanjut (Stadium IV).\n\n**Rekomendasi:** Prioritas pada terapi sistemik (kemoterapi/targeted therapy) atau imunoterapi klinis.")
-                    
-            with col2:
-                st.markdown("### Tingkat Keyakinan Model (Probabilitas)")
-                
-                fig, ax = plt.subplots(figsize=(8, 4))
-                bars = ax.bar(stage_names, probabilities * 100, color=warna_stadium, alpha=0.85)
-                
-                ax.set_ylabel("Probabilitas (%)", fontsize=10)
-                ax.set_ylim(0, 105)
-                ax.grid(axis='y', linestyle='--', alpha=0.7)
-                
-                for bar in bars:
-                    yval = bar.get_height()
-                    ax.text(bar.get_x() + bar.get_width()/2, yval + 2, f'{yval:.1f}%', 
-                            ha='center', va='bottom', fontweight='bold', fontsize=11)
-                
-                st.pyplot(fig)
-            
-            # ==========================================
-            # FASE E: VISUALISASI BIOMARKER (EXPLAINABLE AI)
-            # ==========================================
-            st.divider()
-            st.markdown("### 🧬 Transparansi AI: Top 10 Gen Pemicu (Biomarker)")
-            st.caption("Grafik ini menunjukkan 10 gen spesifik yang paling memengaruhi keputusan mesin untuk pasien ini.")
-            
-            fitur_awal = scaler.feature_names_in_
-            fitur_anova = fitur_awal[selector_anova.get_support()]
-            fitur_rfe = fitur_anova[selector_rfe.get_support()]
-            
-            importances = model.feature_importances_
-            
-            df_importance = pd.DataFrame({
-                'Gene_ID': fitur_rfe,
-                'Importance': importances
-            })
-            top_10_genes = df_importance.sort_values(by='Importance', ascending=False).head(10)
-            
-            fig2, ax2 = plt.subplots(figsize=(10, 4))
-            sns.barplot(x='Importance', y='Gene_ID', data=top_10_genes, palette='magma', ax=ax2)
-            
-            ax2.set_xlabel('Bobot Kepentingan Keputusan (Feature Importance)', fontsize=10)
-            ax2.set_ylabel('ID Gen (ENSG)', fontsize=10)
-            
-            for i, v in enumerate(top_10_genes['Importance']):
-                ax2.text(v + 0.001, i, f"{v:.4f}", color='black', va='center', fontweight='bold', fontsize=9)
-            
-            ax2.set_xlim(0, top_10_genes['Importance'].max() * 1.15)
-            
-            st.pyplot(fig2)
-            
-            # --- FASE F: CATATAN EDUKASI UNTUK AUDIENS ---
-            st.info("""
-            💡 **Interpretasi Biologis:** Jika probabilitas tersebar ke beberapa stadium (misal: 40% Stadium II dan 60% Stadium III), 
-            ini mencerminkan profil mutasi RNA-Seq pasien yang sedang berada pada fase transisi (tumpang tindih genetik).
-            """)
-            
-        except Exception as e:
-            st.error(f"❌ Terjadi kesalahan saat memproses data. Pastikan format file adalah TSV dari GDC Portal. Detail Error: {e}")
+st.subheader('Pilih sampel')
+samples = sorted((ROOT / 'DataDummy').glob('*.tsv'))
+mode = st.radio('Sumber data', ['Contoh repository', 'Unggah TSV non-sensitif'], horizontal=True)
+source = None
+if mode == 'Contoh repository':
+    st.caption('File ini tampaknya berasal dari data ekspresi penelitian, bukan data sintetis murni. Asal persis dan kemungkinan tumpang tindih dengan data pelatihan belum diverifikasi; label nama file bukan evaluasi.')
+    if samples:
+        source = st.selectbox('File contoh', samples, format_func=lambda p: p.name)
+    else:
+        st.info('Tidak ada file contoh.')
+else:
+    source = st.file_uploader('File TSV dengan kolom gene_id dan fpkm_unstranded', type=['tsv', 'txt'])
+
+if source is not None and st.button('Jalankan analisis', type='primary'):
+    try:
+        frame = pd.read_csv(source, sep='\t', comment='#')
+        aligned = prepare_expression(frame, pipeline.named_steps['scale'].feature_names_in_)
+        prediction = pipeline.predict(aligned)[0]
+        probabilities = pipeline.predict_proba(aligned)[0]
+        classes = list(pipeline.classes_)
+        if classes != [0, 1, 2, 3] or len(probabilities) != 4:
+            raise ValueError('Pemetaan kelas model tidak sesuai dengan asumsi 0–3; perlu verifikasi tim.')
+        names = ['Stadium I', 'Stadium II', 'Stadium III', 'Stadium IV']
+        st.divider()
+        st.subheader('Hasil model untuk sampel')
+        st.metric('Kelas prediksi', names[int(prediction)])
+        st.caption('Skor berikut adalah keluaran model, bukan probabilitas klinis yang telah dikalibrasi atau ukuran akurasi.')
+        st.bar_chart(pd.DataFrame({'Skor model': probabilities}, index=names), color='#C93F69')
+        feature_names = pipeline.named_steps['scale'].feature_names_in_[pipeline.named_steps['variance'].get_support()][pipeline.named_steps['anova'].get_support()][pipeline.named_steps['rfe'].get_support()]
+        importance = pd.Series(pipeline.named_steps['model'].feature_importances_, index=feature_names).nlargest(10).sort_values()
+        st.subheader('Feature importance global model: 10 gen teratas')
+        st.caption('Importance ini berlaku untuk model secara keseluruhan, bukan penjelasan untuk sampel ini; tidak menunjukkan sebab atau biomarker yang tervalidasi.')
+        fig, ax = plt.subplots(figsize=(9, 4))
+        importance.plot.barh(ax=ax, color='#C93F69')
+        ax.set_xlabel('Feature importance model')
+        st.pyplot(fig)
+        plt.close(fig)
+    except (ValueError, KeyError, TypeError, pd.errors.ParserError) as exc:
+        st.error(f'Data atau artefak tidak kompatibel: {exc}')

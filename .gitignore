@@ -1,1 +1,9 @@
+# Local environments, caches, derived data and serialized artifacts
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+.tmp/
+.audit/
+data/
+outputs/
 *.pkl

@@ -1,0 +1,136 @@
+{
+  "description": "Exploratory held-out evaluation; not clinical validation. Parameters were informed by a prior leaky experiment, so this is not independent confirmation.",
+  "dataset": "GDC TCGA-LUAD primary tumor RNA-Seq STAR Counts; one file per case",
+  "cases": 503,
+  "genes": 60660,
+  "class_counts": [
+    273,
+    119,
+    85,
+    26
+  ],
+  "train_cases": 402,
+  "test_cases": 101,
+  "cv_macro_f1": [
+    0.2913273001508295,
+    0.2773437689600777,
+    0.24875897129186603
+  ],
+  "cv_accuracy": [
+    0.47761194029850745,
+    0.44776119402985076,
+    0.4552238805970149
+  ],
+  "test_report": {
+    "0": {
+      "precision": 0.6617647058823529,
+      "recall": 0.8181818181818182,
+      "f1-score": 0.7317073170731707,
+      "support": 55.0
+    },
+    "1": {
+      "precision": 0.4444444444444444,
+      "recall": 0.3333333333333333,
+      "f1-score": 0.38095238095238093,
+      "support": 24.0
+    },
+    "2": {
+      "precision": 0.25,
+      "recall": 0.17647058823529413,
+      "f1-score": 0.20689655172413793,
+      "support": 17.0
+    },
+    "3": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 5.0
+    },
+    "accuracy": 0.5544554455445545,
+    "macro avg": {
+      "precision": 0.33905228758169936,
+      "recall": 0.33199643493761144,
+      "f1-score": 0.3298890624374224,
+      "support": 101.0
+    },
+    "weighted avg": {
+      "precision": 0.5080566880217433,
+      "recall": 0.5544554455445545,
+      "f1-score": 0.5238019897147711,
+      "support": 101.0
+    }
+  },
+  "majority_baseline_report": {
+    "0": {
+      "precision": 0.5445544554455446,
+      "recall": 1.0,
+      "f1-score": 0.7051282051282052,
+      "support": 55.0
+    },
+    "1": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 24.0
+    },
+    "2": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 17.0
+    },
+    "3": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 5.0
+    },
+    "accuracy": 0.5445544554455446,
+    "macro avg": {
+      "precision": 0.13613861386138615,
+      "recall": 0.25,
+      "f1-score": 0.1762820512820513,
+      "support": 101.0
+    },
+    "weighted avg": {
+      "precision": 0.2965395549455936,
+      "recall": 0.5445544554455446,
+      "f1-score": 0.383980705762884,
+      "support": 101.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      45,
+      7,
+      2,
+      1
+    ],
+    [
+      12,
+      8,
+      4,
+      0
+    ],
+    [
+      9,
+      3,
+      3,
+      2
+    ],
+    [
+      2,
+      0,
+      3,
+      0
+    ]
+  ],
+  "python": "3.13.1",
+  "sklearn": "1.9.1",
+  "xgboost": "3.4.1",
+  "imbalanced_learn": "0.14.2",
+  "model_sha256": "dc19534be083dacea53d931732515c49980092bbf61a3446db2a2292c831d011",
+  "manifest_sha256": "d469c757ab4c5f55098c7113c363a325859187125dbf5825730e8688692d63d4",
+  "manifest_acquired_utc": "2026-10-28T09:11:49.730248+00:00",
+  "evaluated_utc": "2026-10-28T09:46:19.860286+00:00"
+}
